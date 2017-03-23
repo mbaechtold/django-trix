@@ -1,11 +1,19 @@
 from __future__ import unicode_literals
 from django import forms
-from django.contrib.admin import widgets as admin_widgets
-from django.utils.html import format_html
+from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
 
 
 class TrixEditor(forms.Textarea):
+
+    def __init__(self,
+                 *args,
+                 params={},
+                 toolbar_template=None,
+                 **kwargs):
+        self.params = params.copy()
+        self.toolbar_template = toolbar_template
+        super(TrixEditor, self).__init__(*args, **kwargs)
 
     def render(self, name, value, attrs=None):
 
@@ -13,18 +21,36 @@ class TrixEditor(forms.Textarea):
             attrs = {}
         attrs.update({'style': 'visibility: hidden; position: absolute;'})
 
-        params = {
-            'input': attrs.get('id') or '{}_id'.format(name),
-            'class': 'trix-content',
-        }
-        param_str = ' '.join('{}="{}"'.format(k, v) for k, v in params.items())
+        self.params.update({
+            'input': (self.params.get('input') or
+                      attrs.get('id') or
+                      '{}_id'.format(name)),
+            'class': ' '.join(
+                self.params.get('class', '').split(' ') + ['trix-content']
+            ),
+        })
+        if self.toolbar_template:
+            self.params.update({
+                'toolbar': self.params.get(
+                    'toolbar',
+                    'trix-{name}-toolbar'.format(name=name)
+                )
+            })
 
-        html = super(TrixEditor, self).render(name, value, attrs)
-        html = format_html(
-            '{}<p><trix-editor {}></trix-editor></p>',
-            html,
-            mark_safe(param_str))
-        return html
+        param_str = ' '.join('{}="{}"'.format(k, v)
+                             for k, v in self.params.items())
+
+        textarea = super(TrixEditor, self).render(name, value, attrs)
+
+        return render_to_string(
+            'trix/widget.html',
+            context={
+                'toolbar_id': self.params.get('toolbar'),
+                'textarea': textarea,
+                'toolbar_template': self.toolbar_template,
+                'params': mark_safe(param_str),
+            }
+        )
 
     class Media:
         css = {'all': ('trix/trix.css',)}
