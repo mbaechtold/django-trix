@@ -9,8 +9,10 @@ class TrixEditor(forms.Textarea):
     def __init__(self,
                  *args,
                  params={},
+                 toolbar_template=None,
                  **kwargs):
         self.params = params.copy()
+        self.toolbar_template = toolbar_template
         super(TrixEditor, self).__init__(*args, **kwargs)
 
     def render(self, name, value, attrs=None):
@@ -27,6 +29,13 @@ class TrixEditor(forms.Textarea):
                 self.params.get('class', '').split(' ') + ['trix-content']
             ),
         })
+        if self.toolbar_template:
+            self.params.update({
+                'toolbar': self.params.get(
+                    'toolbar',
+                    'trix-{name}-toolbar'.format(name=name)
+                )
+            })
 
         param_str = ' '.join('{}="{}"'.format(k, v)
                              for k, v in self.params.items())
@@ -38,6 +47,7 @@ class TrixEditor(forms.Textarea):
             context={
                 'toolbar_id': self.params.get('toolbar'),
                 'textarea': textarea,
+                'toolbar_template': self.toolbar_template,
                 'params': mark_safe(param_str),
             }
         )
